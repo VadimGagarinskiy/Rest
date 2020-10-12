@@ -1,132 +1,117 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RA;
 using System.Threading.Tasks;
 using RestSharp;
+using RestSharp.Authenticators;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Web.ModelBinding;
 
 namespace task1._1
 {
     [TestClass]
     public class UnitTest1
     {
+        private readonly string baseUrl = "https://rp.epam.com";
+        private readonly string resource = "/api/v1/vadim_gagarinskiy_personal";
+        private readonly string tokenAuthenticator = "a0e00448-cf1d-44d0-b944-32b16933c275";
+        private readonly string contentType = "application/json; charset=utf-8";
+
         [TestMethod]
         public void TestAllLaunches()
         {
-            //1 all launches
-            var client = new RestClient("https://rp.epam.com");
-            // client.Authenticator = new HttpBasicAuthenticator(username, password);
+            var expectedValueOfLaunches = 10;
+            var totalElements = "totalElements";
 
-            var request = new RestRequest("ui/#vadim_gagarinskiy_personal/launches/", Method.GET);
-            var queryResult = client.Execute<List<string>>(request).Data;
+            var client = new RestClient(baseUrl);
+
+            var request = new RestRequest(resource+"/launch", Method.GET);
+            request.AddHeader("Content-Type", contentType);
+            request.RequestFormat = DataFormat.Json;
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
+
+            var timer = new Stopwatch();
+            timer.Start();
+            client.Get(request);
+            client.Get(request);
+            timer.Stop();
+
+            Assert.IsTrue(timer.ElapsedMilliseconds < 2000);
+
+            var response = client.Get(request);
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(expectedValueOfLaunches, Int32.Parse(GetValueAttribute(response.Content, totalElements)));
         }
 
         [TestMethod]
         public void TestAllLaunchesWhereTTLMoreThanNumber()
         {
-            //2 launches with TTL >20
-            const int totalExecutions = 20;
-            var client = new RestClient("https://rp.epam.com");
-            // client.Authenticator = new HttpBasicAuthenticator(username, password);
+            var totalExecutions = 20;
+            var expectedValueOfLaunches = 8;
+            var TTL = "filter.gt.statistics$executions$total";
+            var totalElements = "totalElements";
+            var attributeTotal = "executions\":{\"total";
 
-            var request = new RestRequest("ui/#vadim_gagarinskiy_personal/launches/{total_executions}", Method.GET);
-            request.AddParameter("total_executions", ">20");
-            var timer = new Stopwatch();
-            timer.Start();
-            var response = client.Execute<List<string>>(request);
-            timer.Stop();
-            
-            var queryResult = response.Data;
-            Console.WriteLine(queryResult);
+            var client = new RestClient(baseUrl);
 
-            //check StatusCode
-            Assert.AreEqual(response.StatusCode,200);
+            var request = new RestRequest(resource+"/launch", Method.GET);
+            request.AddHeader("Content-Type", contentType);
+            request.AddParameter(TTL, $"{totalExecutions}");
+            request.RequestFormat = DataFormat.Json;
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
 
-            //3 check launches with status FAILED
-            int valueFailedStatus = 0;
-            foreach (var q in queryResult)
+            var response = client.Get(request);
+            var amountFailedLaunches = new Regex("FAILED").Matches(response.Content).Count;
+
+            foreach (var value in GetValuesOfAttributes(response.Content, attributeTotal))
             {
-                {
-                    //bool FAILED = check q.status == failed
-                }
-                //if(FAILED)
-                {
-                    valueFailedStatus += 1;
-                }
+                Assert.IsTrue(Int32.Parse(value)>20);
             }
-
-            //7 assert that server's response < 1 second
-            Assert.IsTrue(timer.ElapsedMilliseconds<1000);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(expectedValueOfLaunches, Int32.Parse(GetValueAttribute(response.Content, totalElements)));
         }
 
-        [TestMethod]
-        public void TestCreateDashboard()
+        public string GetValueAttribute(string context, string attribute)
         {
-            //4 create Dashboard
-            var client = new RestClient("https://rp.epam.com");
-            // client.Authenticator = new HttpBasicAuthenticator(username, password);
-
-            var requestBefore = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.GET);
-            var queryResultBefore = client.Execute<List<string>>(requestBefore).Data;
-
-            var request = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.POST);
-            request.RequestFormat = DataFormat.Json;
-            request.AddBody(new Item { });
-            client.Execute(request);
-
-            var requestAfter = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.GET);
-            var queryResultAfter = client.Execute<List<string>>(requestAfter).Data;
-            //Assert that dashboard list BEFORE POST method is not equal dashboard list AFTER POST method
-            Assert.AreNotEqual(queryResultBefore.Count,queryResultAfter.Count);
+            context = context.Substring(context.IndexOf(attribute));
+            var endAtr = context.IndexOf(',');
+            var endObj = context.IndexOf('}');
+            if (endAtr > endObj||endAtr==null)
+            {
+                return context.Substring(attribute.Length + 2, endObj - attribute.Length - 2);
+            }
+            else
+            {
+                return context.Substring(attribute.Length + 2, endAtr - attribute.Length - 2);
+            }
         }
 
-        [TestMethod]
-        public void TestEditDashboard()
+        public List<string> GetValuesOfAttributes(string context, string attribute)
         {
-            //5 edit Dashboard
-            int idDashboard = 5;
-            var client = new RestClient("https://rp.epam.com");
-            // client.Authenticator = new HttpBasicAuthenticator(username, password);
-
-            var requestBefore = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/{id}", Method.GET);
-            requestBefore.AddParameter("id", idDashboard);
-            var queryResultBefore = client.Execute<List<Item>>(requestBefore).Data;
-
-            var request = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.PUT);
-            request.RequestFormat = DataFormat.Json;
-            request.AddBody(new Item { });
-            client.Execute(request);
-
-            var requestAfter = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/{id}", Method.GET);
-            requestAfter.AddParameter("id", idDashboard);
-            var queryResultAfter = client.Execute<List<Item>>(requestAfter).Data;
-
-            //Assert that dashboard's description with idDashboard ID BEFORE PUT method
-            //is not equal dashboard's description with idDashboard ID AFTER PUT method
-            Assert.AreNotEqual(queryResultBefore.Description, queryResultAfter.Description );
-        }
-
-        [TestMethod]
-        public void TestDeleteDashboard()
-        {
-            //6 delete Dashboard
-            int idDashboard = 5;
-            var client = new RestClient("https://rp.epam.com");
-            // client.Authenticator = new HttpBasicAuthenticator(username, password);
-
-            var requestBefore = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.GET);
-            var queryResultBefore = client.Execute<List<string>>(requestBefore).Data;
-
-            var request = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/{id}", Method.DELETE);
-            request.AddParameter("id", idDashboard);
-            client.Execute(request);
-
-            var requestAfter = new RestRequest("ui/#vadim_gagarinskiy_personal/dashboards/", Method.GET);
-            var queryResultAfter = client.Execute<List<string>>(requestAfter).Data;
-            //Assert that dashboard list BEFORE DELETE method is not equal dashboard list AFTER DELETE method
-            Assert.AreNotEqual(queryResultBefore.Count, queryResultAfter.Count);
+            List<string> values = new List<string>();
+            while (new Regex(attribute).Matches(context).Count>0)
+            {
+                context = context.Remove(0,context.IndexOf(attribute));
+                var endAtr = context.IndexOf(',');
+                var endObj = context.IndexOf('}');
+                if (endAtr > endObj || endAtr == null)
+                {
+                    values.Add(context.Substring(attribute.Length + 2, endObj - attribute.Length - 2));
+                }
+                else
+                {
+                    values.Add(context.Substring(attribute.Length + 2, endAtr - attribute.Length - 2));
+                }
+                context = context.Remove(0, attribute.Length);
+            }
+            return values;
         }
     }
 }
