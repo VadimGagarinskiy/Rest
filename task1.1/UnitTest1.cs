@@ -78,6 +78,70 @@ namespace task1._1
             Assert.AreEqual(expectedValueOfLaunches, Int32.Parse(GetValueAttribute(response.Content, totalElements)));
         }
 
+        [TestMethod]
+        public void TestCreateDashboard()
+        {
+            var dashboard = "/dashboard";
+            var dashboardDescription = "test";
+            var dashboardName = "CreateTestDashboard2";
+
+            var client = new RestClient(baseUrl);
+
+            var request2 = new RestRequest(resource+dashboard, Method.POST);
+            request2.AddHeader("Content-Type", contentType);
+            request2.RequestFormat = DataFormat.Json;
+            request2.AddBody(new { description = dashboardDescription, name = dashboardName,
+                share = true });
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
+
+            var response = client.Execute(request2);
+
+            Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+        }
+
+        [TestMethod]
+        public void TestUpdateDashboard()
+        {
+            var dashboardID = 14529;
+            var dashboard = $"/dashboard/{dashboardID}";
+            var newDescription = "test2";
+            var dashboardName = "CreateTestDashboard2";
+
+            var client = new RestClient(baseUrl);
+
+            var request2 = new RestRequest(resource + dashboard, Method.PUT);
+            request2.AddHeader("Content-Type", contentType);
+            request2.RequestFormat = DataFormat.Json;
+            request2.AddBody(new
+            {
+                description = newDescription,
+                name = dashboardName
+            });
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
+
+            var response = client.Execute(request2);
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [TestMethod]
+        public void TestDeleteDashboard()
+        {
+            var dashboardID = 14529;
+            var dashboard = $"/dashboard/{dashboardID}";
+
+            var client = new RestClient(baseUrl);
+
+            var request2 = new RestRequest(resource + dashboard, Method.DELETE);
+            request2.AddHeader("Content-Type", contentType);
+            request2.RequestFormat = DataFormat.Json;
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
+
+            var response = client.Execute(request2);
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
         public string GetValueAttribute(string context, string attribute)
         {
             context = context.Substring(context.IndexOf(attribute));
