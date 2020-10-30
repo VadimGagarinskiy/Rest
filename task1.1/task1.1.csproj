@@ -90,7 +90,15 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="content.cs" />
+    <Compile Include="contentDashboard.cs" />
+    <Compile Include="contentLaunch.cs" />
+    <Compile Include="Dashboards.cs" />
+    <Compile Include="executions.cs" />
     <Compile Include="Headspring\Enumeration.cs" />
+    <Compile Include="Launches.cs" />
+    <Compile Include="page.cs" />
+    <Compile Include="statistics.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

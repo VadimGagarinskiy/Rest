@@ -54,10 +54,7 @@ namespace task1._1
         public void TestAllLaunchesWhereTTLMoreThanNumber()
         {
             var totalExecutions = 20;
-            var expectedValueOfLaunches = 8;
             var TTL = "filter.gt.statistics$executions$total";
-            var totalElements = "totalElements";
-            var attributeTotal = "executions\":{\"total";
 
             var client = new RestClient(baseUrl);
 
@@ -68,14 +65,29 @@ namespace task1._1
             client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
 
             var response = client.Get(request);
-            var amountFailedLaunches = new Regex("FAILED").Matches(response.Content).Count;
-
-            foreach (var value in GetValuesOfAttributes(response.Content, attributeTotal))
-            {
-                Assert.IsTrue(Int32.Parse(value)>20);
-            }
+            var launches = SimpleJson.DeserializeObject<Launches>(response.Content);
+            var amountFailedLaunches = launches.content.Count(x => x.status=="FAILED");
+            Assert.IsTrue(launches.content.Count(x => x.statistics.executions.total>20)==launches.content.Length);
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(expectedValueOfLaunches, Int32.Parse(GetValueAttribute(response.Content, totalElements)));
+        }
+
+        [TestMethod]
+        public void TestGetAllDashboards()
+        {
+            var dashboard = "/dashboard";
+
+            var client = new RestClient(baseUrl);
+
+            var request = new RestRequest(resource + dashboard, Method.GET);
+            request.AddHeader("Content-Type", contentType);
+            request.RequestFormat = DataFormat.Json;
+            client.Authenticator = new JwtAuthenticator(tokenAuthenticator);
+
+            var response = client.Execute(request);
+            var dashboards = SimpleJson.DeserializeObject<Dashboards>(response.Content);
+            var valueDashboardsWithDescription = dashboards.content.Count(x => !string.IsNullOrEmpty(x.description));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         }
 
         [TestMethod]
