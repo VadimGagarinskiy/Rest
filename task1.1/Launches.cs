@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace task1._1
 {
-    public class Launches
+    public class Launches:content
     {
         public contentLaunch[] content { get; set; }
     }
